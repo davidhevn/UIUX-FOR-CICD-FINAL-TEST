@@ -30,7 +30,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
       
-      - name: "Build website (no compile needed)"
+      - name: Build website (no compile needed)
         run: |
           mkdir build
           cp -r * build/
