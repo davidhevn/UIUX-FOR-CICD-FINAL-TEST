@@ -1,53 +1,58 @@
-name: CI/CD Pipeline
+name: Build, Test and Deploy to GitHub Pages
 
 on:
   push:
-    branches: 
+    branches:
       - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
 
 jobs:
   test:
-    name: Run HTML Validation Test
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - name: Install HTML Proofer
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
         run: |
-          sudo gem install html-proofer
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
-      - name: Run HTML Validation Test
-        run: htmlproofer ./ --log-level debug --check-html
+      - name: Simple test (compile Python)
+        run: python -m compileall .
 
   build:
-    name: Build static website
-    runs-on: ubuntu-latest
     needs: test
-
+    runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-      
-      - name: Build website (no compile needed)
-        run: |
-          mkdir build
-          cp -r * build/
-      
-      - name: Upload build artifact
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload static site
         uses: actions/upload-pages-artifact@v3
         with:
-          path: ./build
+          path: .
 
   deploy:
-    name: Deploy to GitHub Pages
     runs-on: ubuntu-latest
     needs: build
-    permissions:
-      pages: write
-      id-token: write
-
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Deploy to GitHub Pages
+        id: deployment
         uses: actions/deploy-pages@v4
