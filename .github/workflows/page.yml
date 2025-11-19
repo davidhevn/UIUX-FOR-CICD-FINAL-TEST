@@ -2,38 +2,52 @@ name: CI/CD Pipeline
 
 on:
   push:
-    branches: [ main ]
+    branches: 
+      - main
 
 jobs:
   test:
     name: Run HTML Validation Test
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout repository
+      - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Install HTML validator
-        run: sudo apt-get install tidy
-
-      - name: Validate HTML files
+      - name: Install HTML Proofer
         run: |
-          for file in *.html; do 
-            tidy -qe "$file" || true; 
-          done
-      # "tidy" checks for HTML errors; professor will be satisfied with this.
+          sudo gem install html-proofer
+
+      - name: Run HTML Validation Test
+        run: htmlproofer ./ --log-level debug --check-html
+
+  build:
+    name: Build static website
+    runs-on: ubuntu-latest
+    needs: test
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: "Build website (no compile needed)"
+        run: |
+          mkdir build
+          cp -r * build/
+      
+      - name: Upload build artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./build
 
   deploy:
     name: Deploy to GitHub Pages
-    needs: test   # DEPLOY ONLY IF TEST PASSES
     runs-on: ubuntu-latest
+    needs: build
+    permissions:
+      pages: write
+      id-token: write
+
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v1
-        with:
-          path: .
-
       - name: Deploy to GitHub Pages
-        uses: actions/deploy-pages@v2
+        uses: actions/deploy-pages@v4
